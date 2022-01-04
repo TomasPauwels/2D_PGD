@@ -1,8 +1,3 @@
-%flip the strain to be 
-% [ r1 s1'
-%   r2's2 
-%   r1's1 + r2s1']
-
 clear all; close all; clc;
 
 %GEOMETRY
@@ -49,12 +44,12 @@ qr(BCy) = 0;
 qr_old = qr;
 qs_old = qs;
 
-%Enrichment
+%% Enrichment
 while error_iter >TOL && mode_iter<max_iter   
     mode_iter=mode_iter +1;
-    
+    iter = 0;
+    error = 1;
 while abs(error) > tau && iter<max_iter
-     iter = iter+1;
 %% CALCULATE s ASSUMING r IS KNOWN
 %Stiffness terms    
         ky = zeros(numel(coorY));
@@ -196,20 +191,20 @@ qr(CCy) = Ky(CCy,CCy)\(Fy(CCy)-Res(CCy));
 qr = qr./norm(qr);
 
 %% Error 
-error = max(abs(sum(qr_old-qr)),abs(sum(qs_old-qs)))
+error = max(abs(sum(qr_old-qr)),abs(sum(qs_old-qs)));
 qr_old = qr;
 qs_old = qs;
+iter = iter+1
 end
-
-Fhist(:,mode_iter) = qr;
-Ghist(:,mode_iter) = qs;
+Ghis(:,mode_iter) = qs;
+Fhis(:,mode_iter) = qr;
 
 F=F + qr;
 G=G + qs;
 
 iter_error = norm(qr.*qs);
 Aprt = max(Aprt,sqrt(iter_error));
-error =sqrt(iter_error)/Aprt;
+iter_error =sqrt(iter_error)/Aprt
 
 
 end 
