@@ -44,6 +44,7 @@ qr(BCy) = 0;
 qr_old = qr;
 qs_old = qs;
 
+eta_u = zeros(3,1);
 %% Enrichment
 while error_iter >TOL && mode_iter<max_iter   
     mode_iter=mode_iter +1;
@@ -86,7 +87,7 @@ for j = 1:size(gauss,2)
       r = [0.5*((1-gauss(j))*qr(1) + (1+gauss(j))*qr(3));
            0.5*((1-gauss(j))*qr(2) + (1+gauss(j))*qr(4))];
      
-  fy = fy + r.*b*Jx;
+      fy = fy + r.*b*Jx;
 end
 Fx = zeros(numel(coorX),1);
 for j = 1:size(gauss,2)
@@ -103,11 +104,7 @@ for j=1:size(gauss,2)
            0                0                                               (qr(4)-qr(2))/2   0;
            (qr(3)-qr(1))/2  0                                               0                 0.5*((1-gauss(j))*qr(2) + (1+gauss(j))*qr(4))];   
            
-                        
-      eta_u=[ (0.5*((1-gauss(j))*F(1) + (1+gauss(j))*F(3)))*    (G(3)-G(1))/2;
-              (F(4)-F(2))/2                                *    (0.5*((1-gauss(j))*G(2) + (1+gauss(j))*G(4)));                
-              (0.5*((1-gauss(j))*G(1) + (1+gauss(j))*G(3)))*    (F(3)-F(1))/2                             + (G(4)-G(2))/2 * (0.5*((1-gauss(j))*F(2) + (1+gauss(j))*F(4)))];
-              
+             
       res = res + R'*C*eta_u * Jy;
 end
 
@@ -169,12 +166,8 @@ for j=1:size(gauss,2)
            0                0                                               (qs(4)-qs(2))/2   0;
            (qs(3)-qs(1))/2  0                                               0                 0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))];   
            
-                        
-      eta_u=[ (0.5*((1-gauss(j))*F(1) + (1+gauss(j))*F(3)))*    (G(3)-G(1))/2;
-              (F(4)-F(2))/2                                *    (0.5*((1-gauss(j))*G(2) + (1+gauss(j))*G(4)));                
-              (0.5*((1-gauss(j))*G(1) + (1+gauss(j))*G(3)))*    (F(3)-F(1))/2                             + (G(4)-G(2))/2 * (0.5*((1-gauss(j))*F(2) + (1+gauss(j))*F(4)))];
-              
-      res = res + R'*C*eta_u * Jx;
+                            
+      res = res + S'*C*eta_u * Jx;
 end
 
 Res=zeros(numel(coorX),1);
@@ -199,8 +192,21 @@ end
 Ghis(:,mode_iter) = qs;
 Fhis(:,mode_iter) = qr;
 
-F=F + qr;
-G=G + qs;
+%update eta
+s = zeros(2,1);
+r = zeros(2,1);
+    for j = 1:size(gauss,2)
+      s = s+ Jx*  [0.5*((1-gauss(j))*qs(1) + (1+gauss(j))*qs(3));
+                   0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))];    
+      r = r+ Jy*  [0.5*((1-gauss(j))*qr(1) + (1+gauss(j))*qr(3));
+                   0.5*((1-gauss(j))*qr(2) + (1+gauss(j))*qr(4))];  
+    end
+
+eta_new = [r(1)               *  (qs(3)-qs(1))/2;
+           (qr(4)-qr(2))/2    *  s(2);
+           (qr(3)-qr(1))/2    *  s(1)              + r(2) * (qs(4)-qs(2))/2];
+
+eta_u = eta_u + eta_new;
 
 iter_error = norm(qr.*qs);
 Aprt = max(Aprt,sqrt(iter_error));
