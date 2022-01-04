@@ -192,24 +192,17 @@ for j=1:size(gauss,2)
       Res= Res + By'*res *Jy;
 end
 
-qr(CCy) = Ky(CCy,CCy)\(Fy(CCy)-Res(CCy));
+qr(CCy) = Ky(CCy,CCy)\(Fy(CCy)-Res(CCy))
 qr = qr./norm(qr);
 
 %% Error 
-error = max(abs(sum(qr_old-qr)),abs(sum(qs_old-qs)))
+error = max(abs(sum(qr_old-qr)),abs(sum(qs_old-qs)));
 qr_old = qr;
 qs_old = qs;
 end
 
-Fhist(:,mode_iter) = qr;
-Ghist(:,mode_iter) = qs;
+Fhist(:,it
 
-F=F + qr;
-G=G + qs;
-
-iter_error = norm(qr.*qs);
-Aprt = max(Aprt,sqrt(iter_error));
-error =sqrt(iter_error)/Aprt;
 
 
 end 
