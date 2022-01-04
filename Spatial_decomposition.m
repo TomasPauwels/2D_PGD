@@ -50,7 +50,7 @@ qr_old = qr;
 qs_old = qs;
 
 %Enrichment
-%while error_iter >TOL && mode_iter<max_iter
+%while error_iter >TOL && mode_iter<max_iter    %Test GIT changes
     mode_iter=mode_iter +1;
     
 while abs(error) > tau && iter<max_iter
