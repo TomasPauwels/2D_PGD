@@ -7,22 +7,27 @@ nelx=1;
 nely=1;
 [coorX,coorY]= meshgrid(0:(L/nelx):L,0:(H/nely):H); 
 Nodes = [coorX(:),coorY(:)];
+Nodes([1 2 4 3],:) = Nodes;
 
 %VARIABLES
 E = 1e6;
 nu = 0.3;
-error_iter=1;
+mode_error=1;
 error = 1;
 iter=0;
 mode_iter=0;
-max_iter=25;
+max_iter=20;
 tau = 1e-3;
 Aprt = 0;
-TOL = 1e-3;
+TOL = 1e-6;
 
 rho = 1;
 g =10;
-b = [0; -1];
+b = [0; -25];
+
+ C = E/(1-nu^2)*[1  nu 0;
+                 nu 1  0;
+                 0  0  (1-nu)/2];
 %boundary conditions
 
 BCx = [1 2];
@@ -36,20 +41,24 @@ Fhis=zeros(numel(coorX),1);
 Ghis=zeros(numel(coorY),1);
 F=zeros(numel(coorX),1);
 G=zeros(numel(coorY),1);
-qs = zeros(numel(coorY),1);
-qr = rand(numel(coorX),1);
-qs(BCx) = 0;
-qr(BCy) = 0;
 
-qr_old = qr;
-qs_old = qs;
+r_old=[0;0];
+s_old=[0;0];
 
 eta_u = zeros(3,1);
 %% Enrichment
-while error_iter >TOL && mode_iter<max_iter   
+while mode_error > tau && mode_iter<max_iter   
     mode_iter=mode_iter +1;
     iter = 0;
     error = 1;
+    qs = zeros(numel(coorY),1);
+    qr = rand(numel(coorX),1);
+    qs(BCx) = 0;
+    qr(BCy) = 0;
+    qr_old = qr;
+    qs_old = qs;
+    
+    
 while abs(error) > tau && iter<max_iter
 %% CALCULATE s ASSUMING r IS KNOWN
 %Stiffness terms    
@@ -63,12 +72,9 @@ for j = 1:size(gauss,2)
                  0                0                                               (qr(4)-qr(2))/2   0;
                  (qr(3)-qr(1))/2  0                                               0                 0.5*((1-gauss(j))*qr(2) + (1+gauss(j))*qr(4))];   
            
-            C = E/(1-nu^2)*[1  nu 0;
-                            nu 1  0;
-                            0  0  (1-nu)/2];
+           
             ky = ky + R'*C*R*Jy;
 end
-
 
 Kx = zeros(numel(coorX));
 for j = 1:size(gauss,2)
@@ -100,9 +106,9 @@ end
 %residuals 
 res=zeros(numel(coorY),1);
 for j=1:size(gauss,2)
-      R = [0                0.5*((1-gauss(j))*qr(1) + (1+gauss(j))*qr(3))   0                 0;
-           0                0                                               (qr(4)-qr(2))/2   0;
-           (qr(3)-qr(1))/2  0                                               0                 0.5*((1-gauss(j))*qr(2) + (1+gauss(j))*qr(4))];   
+      R = [0                 0.5*((1-gauss(j))*qr(1) + (1+gauss(j))*qr(3))   0                 0;
+           0                 0                                               (qr(4)-qr(2))/2   0;
+           (qr(3)-qr(1))/2   0                                               0                 0.5*((1-gauss(j))*qr(2) + (1+gauss(j))*qr(4))];   
            
              
       res = res + R'*C*eta_u * Jy;
@@ -118,16 +124,16 @@ for j=1:size(gauss,2)
       Res= Res + Bx'*res *Jx;
 end
 
-                        
+                     
 qs(CCx) = Kx(CCx,CCx)\(Fx(CCx)-Res(CCx));
 
 %% Calculate r assuming s is known
 kx = zeros(numel(coorY));
 for j = 1:size(gauss,2)
-    S = [0                0.5*((1-gauss(j))*qs(1) + (1+gauss(j))*qs(3))   0                 0;
-         0                0                                               (qs(4)-qs(2))/2   0;
-         (qs(3)-qs(1))/2  0                                               0                 0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))];   
-    
+    S = [ (qs(3)-qs(1))/2  0                                               0                 0;
+           0                0                                               0                 0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))
+           0                0.5*((1-gauss(j))*qs(1) + (1+gauss(j))*qs(3))   (qs(4)-qs(2))/2   0];
+       
     C = E/(1-nu^2)*[1  nu 0;
                     nu 1  0;
                     0  0  (1-nu)/2];
@@ -145,11 +151,13 @@ end
 
 %force terms
 fx = zeros(2,1);
+s = zeros(2,1);
 for j = 1:size(gauss,2)
       s = [0.5*((1-gauss(j))*qs(1) + (1+gauss(j))*qs(3));
            0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))];    
       fx = fx + s.*b*Jx;
 end
+
 Fy = zeros(numel(coorX),1);
 for j = 1:size(gauss,2)
     Ny = [0.5*(1-gauss(j))  0                   0.5*(1+gauss(j))  0;
@@ -162,22 +170,23 @@ end
 %residuals 
 res=zeros(numel(coorY),1);
 for j=1:size(gauss,2)
-      S = [0                0.5*((1-gauss(j))*qs(1) + (1+gauss(j))*qs(3))   0                 0;
-           0                0                                               (qs(4)-qs(2))/2   0;
-           (qs(3)-qs(1))/2  0                                               0                 0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))];   
-           
+    
+      S = [(qs(3)-qs(1))/2  0                                               0                 0;
+           0                0                                               0                 0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))
+           0                0.5*((1-gauss(j))*qs(1) + (1+gauss(j))*qs(3))   (qs(4)-qs(2))/2   0];
                             
       res = res + S'*C*eta_u * Jx;
 end
-
 Res=zeros(numel(coorX),1);
 for j=1:size(gauss,2)
+    
      By = [ 0.5*(1-gauss(j))  0                 0.5*(1+gauss(j))  0;
            -0.5               0                 0.5               0
             0                 0.5*(1-gauss(j))  0                 0.5*(1+gauss(j));
             0                -0.5               0                 0.5];
       
       Res= Res + By'*res *Jy;
+      
 end
 
 qr(CCy) = Ky(CCy,CCy)\(Fy(CCy)-Res(CCy));
@@ -187,12 +196,14 @@ qr = qr./norm(qr);
 error = max(abs(sum(qr_old-qr)),abs(sum(qs_old-qs)));
 qr_old = qr;
 qs_old = qs;
-iter = iter+1
+iter = iter+1;
 end
 Ghis(:,mode_iter) = qs;
 Fhis(:,mode_iter) = qr;
 
 %update eta
+s = zeros(2,1);
+r = zeros(2,1);
     for j = 1:size(gauss,2)
       s = s+ Jx*  [0.5*((1-gauss(j))*qs(1) + (1+gauss(j))*qs(3));
                    0.5*((1-gauss(j))*qs(2) + (1+gauss(j))*qs(4))];    
@@ -200,16 +211,41 @@ Fhis(:,mode_iter) = qr;
                    0.5*((1-gauss(j))*qr(2) + (1+gauss(j))*qr(4))];  
     end
 
-eta_new = [r *  (qs(3)-qs(1))/2;
-           
-     
+eta_new = [r(1)               *  (qs(3)-qs(1))/2;
+           (qr(4)-qr(2))/2    *  s(2);
+           ((qr(3)-qr(1))/2   *  s(1))              + (r(2) * (qs(4)-qs(2))/2)];
 
 eta_u = eta_u + eta_new;
 
-iter_error = norm(qr.*qs);
-Aprt = max(Aprt,sqrt(iter_error));
-iter_error =sqrt(iter_error)/Aprt
+%stopping criterion;
 
+if mode_iter>1
+mode_error = sqrt(  (r(1)*s(1)-r_old(1)*s_old(1))^2  +  (r(2)*s(2)- r_old(2)*s_old(2))^2);
+end
+
+s_old=s;
+r_old=r;
 
 end 
+
+
+%% plotter
+%Node 3
+u_3=zeros(2,1);
+for j=1:size(Ghis,2)
+    u_3 = u_3 + Fhis(1:2,j).*Ghis(3:4,j);
+end
+%Node 4
+u_4=zeros(2,1);
+for j=1:size(Ghis,2)
+    u_4 = u_4 + Fhis(3:4,j).*Ghis(3:4,j);
+end
+
+NewNodes=Nodes;
+NewNodes(3:4,:) = [u_4';u_3'];
+
+plot(Nodes(:,1),Nodes(:,2))
+plot(Nodes(4
+hold on 
+plot(NewNodes(:,1),NewNodes(:,2),'color','r')
 
